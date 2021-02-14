@@ -1,45 +1,75 @@
 #include <set>
 #include <cmath>
 #include <gmsh.h>
+#include <iostream>
 
 int main(int argc, char **argv)
 {
   gmsh::initialize(argc, argv);
 
-  gmsh::model::add("t3");
+  gmsh::model::add("torus");
 
   double lc = 1e-1;
 
-  int n = 3;
-  for (int i=1; i<=n; i++) {
-    gmsh::model::geo::addPoint(cos(2 * M_PI * i / n)*(.1), sin(2 * M_PI * i / n)*(.1), 0, lc, i);
+  int n = 100; // loops quantity
+  double R = 1;
+  double r = .5;
+
+  //int cn = 1;
+  int arcs = 0;
+  int loops = 0;
+  for (int i=1, k=1; i<=n; i++) {
+
+    double x = R + r * cos(2 * M_PI * i / n);
+    double y = x;
+    double z = r * sin(2 * M_PI * i / n);
+
+    int a=k;
+    gmsh::model::geo::addPoint(0, 0, z, lc, k++);
+
+    int b=k;
+    gmsh::model::geo::addPoint(x*cos(-2 * M_PI / 3),
+                               y*sin(-2 * M_PI / 3),
+                               z,
+                               lc, k++);
+    int c=k;
+    gmsh::model::geo::addPoint(x*cos(0),
+                               y*sin(0),
+                               z,
+                               lc, k++);
+    int d=k;
+    gmsh::model::geo::addPoint(x*cos(2 * M_PI / 3),
+                               y*sin(2 * M_PI / 3),
+                               z,
+                               lc, k++);
+
+    gmsh::model::geo::addCircleArc(b, a, c, ++arcs);
+    gmsh::model::geo::addCircleArc(c, a, d, ++arcs);;
+    gmsh::model::geo::addCircleArc(d, a, b, ++arcs);
+    gmsh::model::geo::addCurveLoop({arcs-2, arcs-1, arcs}, ++loops);
+
   }
-  gmsh::model::geo::addPoint(0, 0, 0, lc, 4);
 
-  gmsh::model::geo::addCircleArc(1, 4, 2, 1);
-  gmsh::model::geo::addCircleArc(2, 4, 3, 2);
-  gmsh::model::geo::addCircleArc(3, 4, 1, 3);
+  int surfaces = 0;
 
-  gmsh::model::geo::addCurveLoop({1, 2, 3}, 1);
-  gmsh::model::geo::addPlaneSurface({1}, 1);
+  for (int i=1; i < loops; i++) {
+    gmsh::model::geo::addPlaneSurface({i, (i+1)}, ++surfaces);
+  }
 
-  std::vector<std::pair<int, int>> ov;
-  std::vector<std::pair<int, int>> ov2;
-  std::vector<std::pair<int, int>> ov3;
-  std::vector<std::pair<int, int>> ov4;
-  gmsh::model::geo::addPoint(0, 0.2, 0, lc, 5);
-  gmsh::model::geo::revolve({{2, 1}}, 0, 0.2, 0, .1, 0, 0, 2*M_PI / 3 , ov);
-  gmsh::model::geo::revolve({{2, 1}}, 0, 0.2, 0, .1, 0, 0, -2*M_PI / 3 , ov2);
-  gmsh::model::geo::copy({{2,1}}, ov3);
-  gmsh::model::geo::rotate({ov3}, 0, 0.2, 0, .1, 0, 0, 8.00001*M_PI / 12);
-  gmsh::model::geo::revolve({ov3}, 0, 0.2, 0, .1, 0, 0, 2*M_PI / 3 , ov4);
+  gmsh::model::geo::addPlaneSurface({loops, 1}, ++surfaces);
 
+  /*
+    Uncomment for volumed version
+  */
+  /*
+  std::vector<int> surf_vec(surfaces);
+  for (int i=0; i<surfaces; i++)
+    surf_vec[i] = i+1;
 
+  gmsh::model::geo::addSurfaceLoop(surf_vec, 1);
 
-  //gmsh::model::geo::copy({ov2}, ov3);
-  //gmsh::model::geo::rotate({ov3}, 0, 0.2, 0, .1, 0, 0, -2*M_PI / 3);
-  //gmsh::model::geo::extrude({{2, 1}}, 0, 0, .3, ov);
-
+  gmsh::model::geo::addVolume({1}, 1);
+  */
 
   gmsh::model::geo::synchronize();
   gmsh::model::mesh::generate(3);
